@@ -143,6 +143,16 @@
     .cart-gift-row .gift-full { color: #0068B7; font-weight: 700; }
 
     .action-row { display: flex; gap: 10px; margin-top: 12px; }
+    .payment-row {
+      display: flex; align-items: center; gap: 8px; padding: 10px 0;
+      border-bottom: 1px solid #f8bbd0;
+    }
+    .payment-label { font-size: 13px; font-weight: 700; color: #666666; white-space: nowrap; }
+    .payment-select {
+      flex: 1; background: #ffffff; border: 2px solid #f8bbd0; border-radius: 8px;
+      padding: 8px 10px; color: #1a1a2e; font-size: 14px; font-weight: 700; outline: none;
+    }
+    .payment-select:focus { border-color: #E86A9A; }
     .btn {
       flex: 1; padding: 14px; border-radius: 12px; border: none;
       font-size: 16px; font-weight: 700; cursor: pointer; text-align: center;
@@ -298,6 +308,12 @@
             <div class="cart-total-label">Total</div>
             <div class="cart-total-value" id="cartTotal">SGD 0</div>
           </div>
+          <div class="payment-row" id="paymentRow" style="display:none;">
+            <div class="payment-label">Pay</div>
+            <select class="payment-select" id="paymentSelect" onchange="updatePaymentMethod()">
+              <option value="">Select...</option>
+            </select>
+          </div>
           <div class="cart-gift-row" id="cartGift">No gift yet</div>
           <div class="action-row">
             <button class="btn btn-secondary" onclick="clearCart()">Cancel</button>
@@ -349,6 +365,12 @@
           <input type="number" class="settings-input" id="settingGwpFull" placeholder="150" style="flex:1;">
         </div>
         <div class="settings-help">Single badge threshold / Full set threshold</div>
+      </div>
+      
+      <div class="settings-section">
+        <div class="settings-label">Payment Methods</div>
+        <div class="scroll-box" id="settingsPayments"></div>
+        <button class="add-btn" onclick="addPaymentRow()">+ Add Payment Method</button>
       </div>
       
       <div class="settings-section">
@@ -411,11 +433,14 @@
       { id: 'ep', name: 'ENAMEL PIN（金屬徽章）', price: 36 },
     ];
 
+    const DEFAULT_PAYMENT_METHODS = ['Cash', 'PayNow', 'Credit Card'];
+
     const DEFAULT_SETTINGS = {
       currency: 'SGD',
       gwpSingle: 50,
       gwpFull: 150,
-      products: DEFAULT_PRODUCTS
+      products: DEFAULT_PRODUCTS,
+      paymentMethods: DEFAULT_PAYMENT_METHODS
     };
 
     function loadSettings() {
@@ -435,6 +460,8 @@
     let CURRENCY = settings.currency;
     let GWP_SINGLE = settings.gwpSingle;
     let GWP_FULL = settings.gwpFull;
+    let PAYMENT_METHODS = settings.paymentMethods || DEFAULT_PAYMENT_METHODS;
+    let currentPaymentMethod = '';
 
     let cart = {};
     let transactions = [];
@@ -599,9 +626,20 @@
       panelSub.textContent = `${keys.length} item(s) in cart`;
       checkoutBtn.disabled = false;
       renderGift('cartGift', subtotal);
+      renderPaymentSelector();
     }
 
-    function calcDiscount(subtotal) {
+    function renderPaymentSelector() {
+      const sel = document.getElementById('paymentSelect');
+      const row = document.getElementById('paymentRow');
+      const saved = currentPaymentMethod;
+      sel.innerHTML = '<option value="">Select...</option>' + PAYMENT_METHODS.map(m => `<option value="${m}"${m === saved ? ' selected' : ''}>${m}</option>`).join('');
+      row.style.display = 'flex';
+    }
+
+    function updatePaymentMethod() {
+      currentPaymentMethod = document.getElementById('paymentSelect').value;
+    }
       if (!discountRaw) return { amount: 0, label: '-' };
       const val = discountRaw.trim();
       if (val.endsWith('%')) {
@@ -651,7 +689,10 @@
     function clearCart() {
       cart = {};
       discountRaw = '';
+      currentPaymentMethod = '';
       document.getElementById('discountInput').value = '';
+      document.getElementById('paymentRow').style.display = 'none';
+      document.getElementById('paymentSelect').innerHTML = '<option value="">Select...</option>';
       renderProducts();
       renderCart();
     }
@@ -670,10 +711,11 @@
       const disc = calcDiscount(subtotal);
       const finalTotal = Math.max(subtotal - disc.amount, 0);
       const gift = getGiftInfo(subtotal);
+      const paymentMethod = currentPaymentMethod || PAYMENT_METHODS[0] || 'Cash';
       const tx = {
         id: Date.now(),
         time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-        items, subtotal, discount: disc, total: finalTotal, gift
+        items, subtotal, discount: disc, total: finalTotal, gift, paymentMethod
       };
       transactions.push(tx);
       saveTransactions(transactions);
@@ -719,16 +761,26 @@
 
       const summary = {};
       let totalGifts = 0;
+      const paymentSummary = {};
       transactions.forEach(tx => {
         tx.items.forEach(it => {
           summary[it.name] = (summary[it.name] || 0) + it.qty;
         });
         if (tx.gift && tx.gift.count) totalGifts += tx.gift.count;
+        const pm = tx.paymentMethod || 'Unknown';
+        paymentSummary[pm] = (paymentSummary[pm] || 0) + tx.total;
       });
       if (Object.keys(summary).length > 0) {
         text += `--- Product Summary ---\n`;
         Object.entries(summary).forEach(([name, qty]) => {
           text += `${name}: ${qty}\n`;
+        });
+        text += `\n`;
+      }
+      if (Object.keys(paymentSummary).length > 0) {
+        text += `--- Payment Methods ---\n`;
+        Object.entries(paymentSummary).forEach(([pm, amt]) => {
+          text += `${pm}: ${CURRENCY} ${amt}\n`;
         });
         text += `\n`;
       }
@@ -739,7 +791,7 @@
 
       text += `--- Transactions ---\n`;
       transactions.forEach(tx => {
-        text += `[${tx.time}] `;
+        text += `[${tx.time}] [${tx.paymentMethod || 'Cash'}] `;
         text += tx.items.map(i => `${i.name}x${i.qty}`).join(', ');
         text += ` = ${CURRENCY} ${tx.subtotal}`;
         if (tx.discount.amount > 0) text += ` - ${CURRENCY} ${tx.discount.amount} discount`;
@@ -791,7 +843,33 @@
       document.getElementById('settingGwpSingle').value = GWP_SINGLE;
       document.getElementById('settingGwpFull').value = GWP_FULL;
       renderSettingsProducts();
+      renderSettingsPayments();
       document.getElementById('settingsModal').classList.add('show');
+    }
+
+    function renderSettingsPayments() {
+      const container = document.getElementById('settingsPayments');
+      container.innerHTML = PAYMENT_METHODS.map((m, idx) => `
+        <div class="product-edit-row" style="background:#ffffff;">
+          <input type="text" value="${m}" placeholder="Method name" style="flex:1;" onchange="updatePaymentMethodName(${idx},this.value)">
+          <button class="del-btn" onclick="deletePaymentMethod(${idx})">X</button>
+        </div>
+      `).join('');
+    }
+
+    function updatePaymentMethodName(idx, val) {
+      PAYMENT_METHODS[idx] = val.trim();
+      renderSettingsPayments();
+    }
+
+    function deletePaymentMethod(idx) {
+      PAYMENT_METHODS.splice(idx, 1);
+      renderSettingsPayments();
+    }
+
+    function addPaymentRow() {
+      PAYMENT_METHODS.push('New');
+      renderSettingsPayments();
     }
 
     function renderSettingsProducts() {
@@ -850,14 +928,16 @@
       GWP_SINGLE = newGwpSingle;
       GWP_FULL = newGwpFull;
 
-      settings = { currency: CURRENCY, gwpSingle: GWP_SINGLE, gwpFull: GWP_FULL, products: PRODUCTS };
+      settings = { currency: CURRENCY, gwpSingle: GWP_SINGLE, gwpFull: GWP_FULL, products: PRODUCTS, paymentMethods: PAYMENT_METHODS };
       saveSettingsObj(settings);
 
       // reload transactions with new currency key
       transactions = loadTransactions();
       cart = {};
       discountRaw = '';
+      currentPaymentMethod = '';
       document.getElementById('discountInput').value = '';
+      document.getElementById('paymentRow').style.display = 'none';
 
       renderProducts();
       renderCart();
@@ -867,7 +947,7 @@
     }
 
     function exportSettings() {
-      const s = { currency: CURRENCY, gwpSingle: GWP_SINGLE, gwpFull: GWP_FULL, products: PRODUCTS };
+      const s = { currency: CURRENCY, gwpSingle: GWP_SINGLE, gwpFull: GWP_FULL, products: PRODUCTS, paymentMethods: PAYMENT_METHODS };
       const json = JSON.stringify(s, null, 2);
       navigator.clipboard.writeText(json).then(() => {
         showToast('Settings copied');
@@ -896,12 +976,15 @@
           CURRENCY = imported.currency || 'SGD';
           GWP_SINGLE = imported.gwpSingle || 50;
           GWP_FULL = imported.gwpFull || 150;
-          settings = { currency: CURRENCY, gwpSingle: GWP_SINGLE, gwpFull: GWP_FULL, products: PRODUCTS };
+          PAYMENT_METHODS = imported.paymentMethods || DEFAULT_PAYMENT_METHODS;
+          settings = { currency: CURRENCY, gwpSingle: GWP_SINGLE, gwpFull: GWP_FULL, products: PRODUCTS, paymentMethods: PAYMENT_METHODS };
           saveSettingsObj(settings);
           transactions = loadTransactions();
           cart = {};
           discountRaw = '';
+          currentPaymentMethod = '';
           document.getElementById('discountInput').value = '';
+          document.getElementById('paymentRow').style.display = 'none';
           renderProducts();
           renderCart();
           renderTotals();
@@ -924,14 +1007,18 @@
       CURRENCY = settings.currency;
       GWP_SINGLE = settings.gwpSingle;
       GWP_FULL = settings.gwpFull;
+      PAYMENT_METHODS = settings.paymentMethods || DEFAULT_PAYMENT_METHODS;
       transactions = loadTransactions();
       cart = {};
       discountRaw = '';
+      currentPaymentMethod = '';
       document.getElementById('discountInput').value = '';
+      document.getElementById('paymentRow').style.display = 'none';
       renderProducts();
       renderCart();
       renderTotals();
       renderSettingsProducts();
+      renderSettingsPayments();
       document.getElementById('settingCurrency').value = CURRENCY;
       document.getElementById('settingGwpSingle').value = GWP_SINGLE;
       document.getElementById('settingGwpFull').value = GWP_FULL;
