@@ -646,10 +646,10 @@
       const num = parseFloat(discountRaw.trim());
       if (isNaN(num)) return { amount: 0, label: '-' };
       if (num > 0) {
-        return { amount: -num, label: '+' + CURRENCY + ' ' + num };
+        return { amount: num, label: '+' + CURRENCY + ' ' + num };
       }
       if (num < 0) {
-        return { amount: -num, label: CURRENCY + ' ' + num };
+        return { amount: num, label: CURRENCY + ' ' + num };
       }
       return { amount: 0, label: '-' };
     }
