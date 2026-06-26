@@ -640,6 +640,8 @@
     function updatePaymentMethod() {
       currentPaymentMethod = document.getElementById('paymentSelect').value;
     }
+
+    function calcDiscount(subtotal) {
       if (!discountRaw) return { amount: 0, label: '-' };
       const val = discountRaw.trim();
       if (val.endsWith('%')) {
