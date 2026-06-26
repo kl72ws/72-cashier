@@ -53,7 +53,14 @@
     }
     .product-card:active { transform: scale(0.97); background: #fce4ec; }
     .product-card.in-cart { border-color: #E6007E; background: #fce4ec; }
-    .product-name { font-size: 12px; font-weight: 700; color: #1a1a2e; line-height: 1.25; display: flex; align-items: center; gap: 6px; }
+    .product-name { font-size: 12px; font-weight: 700; color: #1a1a2e; line-height: 1.2; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+    .product-name-row { display: flex; align-items: center; gap: 6px; }
+    .product-name-en { font-size: 14px; font-weight: 800; color: #1a1a2e; }
+    .product-name-cn { font-size: 12px; font-weight: 600; color: #666666; }
+
+    @media (min-width: 768px) {
+      .product-name-en { font-size: 18px; }
+    }
     .product-price { font-size: 18px; font-weight: 800; color: #E6007E; margin-top: 6px; }
     .product-bundle { font-size: 11px; color: #0068B7; margin-top: 2px; font-weight: 700; }
     .product-qty-badge {
@@ -514,10 +521,24 @@
         const qty = cart[p.id] || 0;
         const inCart = qty > 0 ? 'in-cart' : '';
         const bundleText = p.bundle ? `${p.bundle[0]} for ${CURRENCY} ${p.bundle[1]}` : '';
+        // split name into EN and CN parts
+        let enName = p.name;
+        let cnName = '';
+        const match = p.name.match(/^(.+?)（(.+?)）$/);
+        if (match) {
+          enName = match[1];
+          cnName = match[2];
+        }
         return `
           <div class="product-card ${inCart}" onclick="addToCart('${p.id}')">
             <div class="product-qty-badge">${qty}</div>
-            <div class="product-name">${p.dot ? `<span class="product-dot" style="background:${p.dot}"></span>` : ''}${p.name}</div>
+            <div class="product-name">
+              <div class="product-name-row">
+                ${p.dot ? `<span class="product-dot" style="background:${p.dot}"></span>` : ''}
+                <div class="product-name-en">${enName}</div>
+              </div>
+              ${cnName ? `<div class="product-name-cn">${cnName}</div>` : ''}
+            </div>
             <div>
               <div class="product-price">${CURRENCY} ${p.price}</div>
               ${bundleText ? `<div class="product-bundle">${bundleText}</div>` : ''}
