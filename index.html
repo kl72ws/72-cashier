@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>72 Cashier</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E86A9A">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #ffffff;
+      color: #1a1a2e;
+      min-height: 100vh;
+      padding-bottom: 260px;
+      touch-action: manipulation;
+    }
+    .header {
+      background: linear-gradient(135deg, #fce4ec 0%, #ffffff 100%);
+      padding: 10px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 2px solid #E86A9A;
+    }
+    .header-row { display: flex; justify-content: space-between; align-items: center; }
+    .total-box { text-align: center; flex: 1; }
+    .total-label { font-size: 10px; color: #E86A9A; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+    .total-amount { font-size: 28px; font-weight: 800; color: #E6007E; line-height: 1; margin-top: 2px; }
+    .total-count { font-size: 11px; color: #888888; margin-top: 2px; }
+    .header-btn {
+      background: #E86A9A; color: #ffffff; border: none; border-radius: 10px;
+      padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(232,106,154,0.3);
+      pointer-events: auto; position: relative; z-index: 101;
+    }
+    .header-btn:active { background: #D9006E; }
+    .brand-text {
+      text-align: center; font-size: 15px; color: #E86A9A;
+      font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .gift-row .gift-active { color: #E6007E; font-weight: 700; }
+    .gift-row .gift-full { color: #0068B7; font-weight: 700; }
+
+    .products { padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .product-card {
+      background: #ffffff; border: 2px solid #f8bbd0; border-radius: 14px;
+      padding: 12px; cursor: pointer; transition: all 0.15s; position: relative;
+      display: flex; flex-direction: column; justify-content: space-between;
+      min-height: 120px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .product-card:active { transform: scale(0.97); background: #fce4ec; }
+    .product-card.in-cart { border-color: #E6007E; background: #fce4ec; }
+    .product-name { font-size: 12px; font-weight: 700; color: #1a1a2e; line-height: 1.25; display: flex; align-items: center; gap: 6px; }
+    .product-price { font-size: 18px; font-weight: 800; color: #E6007E; margin-top: 6px; }
+    .product-bundle { font-size: 11px; color: #0068B7; margin-top: 2px; font-weight: 700; }
+    .product-qty-badge {
+      position: absolute; top: -6px; right: -6px;
+      background: #E6007E; color: white; font-size: 12px; font-weight: 800;
+      width: 24px; height: 24px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; display: none;
+    }
+    .product-card.in-cart .product-qty-badge { display: flex; }
+    .product-dot {
+      display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+      margin-right: 6px; vertical-align: middle; flex-shrink: 0;
+    }
+
+    .bottom-panel {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #ffffff; border-top: 2px solid #E86A9A;
+      max-height: 60vh; overflow-y: auto;
+      transition: transform 0.2s;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+    }
+    .panel-header {
+      padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid #f8bbd0; cursor: pointer; background: #fce4ec;
+    }
+    .panel-title { font-size: 15px; font-weight: 700; color: #E6007E; }
+    .panel-sub { font-size: 12px; color: #666666; }
+    .panel-toggle { font-size: 18px; color: #E86A9A; transition: transform 0.2s; }
+    .panel-toggle.collapsed { transform: rotate(180deg); }
+    .panel-body { padding: 12px 16px; }
+    .panel-body.hidden { display: none; }
+
+    .cart-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid #f8bbd0;
+    }
+    .cart-item:last-child { border-bottom: none; }
+    .cart-item-name { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+    .cart-item-calc { font-size: 11px; color: #666666; margin-top: 2px; }
+    .cart-item-right { display: flex; align-items: center; gap: 10px; }
+    .cart-item-sub { font-size: 15px; font-weight: 700; color: #E6007E; min-width: 50px; text-align: right; }
+    .qty-control { display: flex; align-items: center; gap: 6px; }
+    .qty-btn {
+      width: 32px; height: 32px; border-radius: 8px; border: none;
+      background: #E86A9A; color: #ffffff; font-size: 18px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      box-shadow: 0 2px 4px rgba(232,106,154,0.3);
+    }
+    .qty-btn:active { background: #D9006E; }
+    .qty-btn.minus { background: #ff6b6b; }
+    .qty-btn.minus:active { background: #ee5a5a; }
+    .qty-value { font-size: 16px; font-weight: 700; min-width: 24px; text-align: center; color: #1a1a2e; }
+
+    .discount-row {
+      display: flex; align-items: center; gap: 8px; padding: 12px 0;
+      border-bottom: 1px solid #f8bbd0;
+    }
+    .discount-label { font-size: 14px; font-weight: 700; color: #666666; }
+    .discount-input {
+      flex: 1; background: #ffffff; border: 2px solid #f8bbd0; border-radius: 8px;
+      padding: 8px 12px; color: #1a1a2e; font-size: 15px; font-weight: 700;
+      outline: none; text-align: right;
+    }
+    .discount-input::placeholder { color: #bbbbbb; font-weight: 400; }
+    .discount-input:focus { border-color: #E86A9A; }
+    .discount-display { font-size: 15px; font-weight: 700; color: #ff6b6b; min-width: 60px; text-align: right; }
+
+    .cart-total-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; margin-top: 4px;
+      border-top: 2px solid #E86A9A;
+    }
+    .cart-total-label { font-size: 16px; font-weight: 700; color: #1a1a2e; }
+    .cart-total-value { font-size: 28px; font-weight: 800; color: #E6007E; }
+
+    .cart-gift-row {
+      text-align: center; font-size: 13px; color: #666666; padding: 8px 0;
+    }
+    .cart-gift-row .gift-active { color: #E6007E; font-weight: 700; }
+    .cart-gift-row .gift-full { color: #0068B7; font-weight: 700; }
+
+    .action-row { display: flex; gap: 10px; margin-top: 12px; }
+    .btn {
+      flex: 1; padding: 14px; border-radius: 12px; border: none;
+      font-size: 16px; font-weight: 700; cursor: pointer; text-align: center;
+    }
+    .btn-primary { background: #E86A9A; color: #ffffff; box-shadow: 0 2px 8px rgba(232,106,154,0.3); }
+    .btn-primary:active { background: #D9006E; }
+    .btn-secondary { background: #fce4ec; color: #E6007E; }
+    .btn-secondary:active { background: #f8bbd0; }
+    .btn-danger { background: #ff6b6b; color: #ffffff; }
+    .btn-danger:active { background: #ee5a5a; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: none; align-items: center; justify-content: center; z-index: 200;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: #ffffff; border: 2px solid #f8bbd0; border-radius: 16px;
+      padding: 24px; width: 100%; max-width: 360px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    }
+    .modal-title { font-size: 18px; font-weight: 700; color: #E6007E; margin-bottom: 12px; }
+    .modal-text { font-size: 14px; color: #666666; margin-bottom: 20px; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 10px; }
+
+    .toast {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px);
+      background: #E86A9A; color: #ffffff; padding: 10px 20px; border-radius: 10px;
+      font-weight: 700; font-size: 14px; opacity: 0; transition: all 0.3s; z-index: 300;
+      pointer-events: none; box-shadow: 0 4px 12px rgba(232,106,154,0.4);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .export-area {
+      background: #fce4ec; border: 1px solid #f8bbd0; border-radius: 10px;
+      padding: 12px; font-size: 12px; font-family: monospace; color: #666666;
+      white-space: pre-wrap; max-height: 200px; overflow-y: auto; margin-bottom: 12px;
+    }
+    .empty-state { text-align: center; padding: 20px; color: #888888; font-size: 13px; }
+
+    /* Settings Modal */
+    .settings-section { margin-bottom: 20px; }
+    .settings-label { font-size: 13px; font-weight: 700; color: #666666; margin-bottom: 6px; }
+    .settings-input {
+      width: 100%; background: #ffffff; border: 2px solid #f8bbd0; border-radius: 8px;
+      padding: 8px 12px; color: #1a1a2e; font-size: 14px; outline: none; margin-bottom: 8px;
+    }
+    .settings-input:focus { border-color: #E86A9A; }
+    .settings-row { display: flex; gap: 8px; }
+    .settings-row .settings-input { flex: 1; }
+    .product-edit-row {
+      display: flex; gap: 6px; align-items: center; margin-bottom: 8px;
+      padding: 8px; background: #fce4ec; border-radius: 8px;
+    }
+    .product-edit-row input {
+      background: #ffffff; border: 1px solid #f8bbd0; border-radius: 6px;
+      padding: 6px 8px; font-size: 13px; outline: none;
+    }
+    .product-edit-row input[name="name"] { flex: 1; }
+    .product-edit-row input[name="price"] { width: 60px; }
+    .product-edit-row input[name="bundle"] { width: 80px; }
+    .product-edit-row input[name="dot"] { width: 50px; }
+    .product-edit-row .del-btn {
+      background: #ff6b6b; color: white; border: none; border-radius: 6px;
+      padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .scroll-box {
+      max-height: 200px; overflow-y: auto; border: 1px solid #f8bbd0;
+      border-radius: 8px; padding: 8px; background: #ffffff; margin-bottom: 10px;
+    }
+    .settings-help { font-size: 11px; color: #888888; margin-top: 4px; }
+    .add-btn {
+      background: #0068B7; color: #ffffff; border: none; border-radius: 8px;
+      padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%;
+    }
+    .add-btn:active { background: #005299; }
+    .danger-btn {
+      background: #ff6b6b; color: #ffffff; border: none; border-radius: 8px;
+      padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%;
+      margin-top: 8px;
+    }
+    .danger-btn:active { background: #ee5a5a; }
+
+    @media (min-width: 600px) {
+      .products { grid-template-columns: repeat(3, 1fr); max-width: 800px; margin: 0 auto; }
+      .header { padding: 14px 20px; }
+      .total-amount { font-size: 36px; }
+    }
+
+    @media (min-width: 768px) {
+      body { padding-bottom: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+      .header { position: relative; flex-shrink: 0; padding: 50px 16px 10px; }
+      .desktop-layout { display: flex; flex-direction: row; flex: 1; overflow: hidden; }
+      .desktop-products { flex: 1; overflow-y: auto; }
+      .products { grid-template-columns: repeat(3, 1fr); padding: 16px; max-width: none; margin: 0; }
+      .product-card { min-height: 90px; padding: 10px; }
+      .desktop-cart { width: 380px; border-left: 2px solid #f8bbd0; background: #ffffff; display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+      .desktop-cart .bottom-panel { position: relative; top: 0; max-height: none; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+      .desktop-cart .panel-body { flex: 1; overflow-y: auto; display: block !important; }
+      .desktop-cart .panel-toggle { display: none; }
+      .desktop-cart .panel-header { cursor: default; flex-shrink: 0; }
+      .action-row { flex-shrink: 0; }
+    }
+
+    @media (min-width: 1024px) {
+      .products { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div style="display:flex;justify-content:center;align-items:center;position:relative;">
+      <div class="brand-text">72 workshop</div>
+      <button class="header-btn" style="position:absolute;right:0;padding:6px 10px;font-size:12px;" onclick="toggleHeader()" id="headerToggleBtn">Hide</button>
+    </div>
+    <div id="headerContent">
+      <div class="header-row">
+        <button class="header-btn" onclick="showExport()">Export</button>
+        <div class="total-box">
+          <div class="total-label">Today's Total</div>
+          <div class="total-amount" id="totalAmount">SGD 0</div>
+          <div class="total-count" id="totalCount">0 transactions</div>
+        </div>
+        <button class="header-btn" onclick="showSettings()">Settings</button>
+      </div>
+      <div class="gift-row" id="headerGift">No gift yet</div>
+    </div>
+  </div>
+
+  <div class="desktop-layout">
+    <div class="desktop-products">
+      <div class="products" id="products"></div>
+    </div>
+    <div class="desktop-cart">
+      <div class="bottom-panel" id="bottomPanel">
+        <div class="panel-header" onclick="togglePanel()">
+          <div>
+            <div class="panel-title">Current Order</div>
+            <div class="panel-sub" id="panelSub">Tap products to add</div>
+          </div>
+          <div class="panel-toggle" id="panelToggle">&#9650;</div>
+        </div>
+        <div class="panel-body" id="panelBody">
+          <div id="cartItems"></div>
+          <div class="discount-row">
+            <div class="discount-label">Discount</div>
+            <input type="text" class="discount-input" id="discountInput" placeholder="10 or 10%" oninput="updateDiscount()">
+            <div class="discount-display" id="discountDisplay">-</div>
+          </div>
+          <div class="cart-total-row">
+            <div class="cart-total-label">Total</div>
+            <div class="cart-total-value" id="cartTotal">SGD 0</div>
+          </div>
+          <div class="cart-gift-row" id="cartGift">No gift yet</div>
+          <div class="action-row">
+            <button class="btn btn-secondary" onclick="clearCart()">Cancel</button>
+            <button class="btn btn-primary" id="checkoutBtn" onclick="checkout()" disabled>Checkout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal-overlay" id="exportModal" onclick="if(event.target===this)closeModal('exportModal')">
+    <div class="modal">
+      <div class="modal-title">Export Report</div>
+      <div class="export-area" id="exportArea"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('exportModal')">Close</button>
+        <button class="btn btn-primary" onclick="copyExport()">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Modal -->
+  <div class="modal-overlay" id="clearModal" onclick="if(event.target===this)closeModal('clearModal')">
+    <div class="modal">
+      <div class="modal-title">Clear All Data?</div>
+      <div class="modal-text">This will delete all transactions for today. This cannot be undone.</div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('clearModal')">Cancel</button>
+        <button class="btn btn-danger" onclick="doClear()">Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')">
+    <div class="modal" style="max-width:480px;max-height:90vh;overflow-y:auto;">
+      <div class="modal-title">Settings</div>
+      
+      <div class="settings-section">
+        <div class="settings-label">Currency</div>
+        <input type="text" class="settings-input" id="settingCurrency" placeholder="SGD">
+      </div>
+      
+      <div class="settings-section">
+        <div class="settings-label">Gift with Purchase Thresholds</div>
+        <div class="settings-row">
+          <input type="number" class="settings-input" id="settingGwpSingle" placeholder="50" style="flex:1;">
+          <input type="number" class="settings-input" id="settingGwpFull" placeholder="150" style="flex:1;">
+        </div>
+        <div class="settings-help">Single badge threshold / Full set threshold</div>
+      </div>
+      
+      <div class="settings-section">
+        <div class="settings-label">Products</div>
+        <div class="scroll-box" id="settingsProducts"></div>
+        <button class="add-btn" onclick="addProductRow()">+ Add Product</button>
+        <div class="settings-help">Bundle format: qty,price (e.g. 3,30). Dot: hex color or empty.</div>
+      </div>
+      
+      <div class="settings-section">
+        <div class="settings-label">Import / Export Settings</div>
+        <div class="settings-row">
+          <button class="btn btn-secondary" onclick="exportSettings()" style="flex:1;font-size:13px;padding:10px;">Copy Settings</button>
+          <button class="btn btn-primary" onclick="importSettings()" style="flex:1;font-size:13px;padding:10px;">Paste Settings</button>
+        </div>
+      </div>
+      
+      <button class="danger-btn" onclick="resetSettings()">Reset to Default</button>
+      
+      <div class="modal-actions" style="margin-top:20px;">
+        <button class="btn btn-secondary" onclick="closeModal('settingsModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Settings Modal -->
+  <div class="modal-overlay" id="importModal" onclick="if(event.target===this)closeModal('importModal')">
+    <div class="modal">
+      <div class="modal-title">Paste Settings JSON</div>
+      <textarea id="importArea" style="width:100%;height:120px;background:#fce4ec;border:1px solid #f8bbd0;border-radius:8px;padding:10px;font-size:12px;resize:none;" placeholder="Paste settings JSON here..."></textarea>
+      <div class="modal-actions" style="margin-top:12px;">
+        <button class="btn btn-secondary" onclick="closeModal('importModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="doImportSettings()">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const DEFAULT_PRODUCTS = [
+      { id: 'apa4', name: 'ART PRINT A4（A4複製畫）', price: 12, bundle: [3, 30] },
+      { id: 'apa5', name: 'ART PRINT A5（A5複製畫）', price: 8, bundle: [3, 20] },
+      { id: 'pca', name: 'POSTCARD SET A（明信片套組A）', price: 10 },
+      { id: 'pcb', name: 'POSTCARD SET B（明信片套組B）', price: 12 },
+      { id: 'asa', name: 'ACRYLIC STANDEE A（壓克力立牌A）', price: 12, dot: '#87CEEB' },
+      { id: 'asb', name: 'ACRYLIC STANDEE B（壓克力立牌B）', price: 14, dot: '#EF4444' },
+      { id: 'asc', name: 'ACRYLIC STANDEE C（壓克力立牌C）', price: 16, dot: '#22C55E' },
+      { id: 'asd', name: 'ACRYLIC STANDEE D（壓克力立牌D）', price: 18, dot: '#F97316' },
+      { id: 'absa', name: 'ACRYLIC BG SET A（壓克力背景A）', price: 16 },
+      { id: 'absb', name: 'ACRYLIC BG SET B（壓克力背景B）', price: 24 },
+      { id: 'ka', name: 'KEYCHAIN A（鎖匙扣A）', price: 12, dot: '#EC4899' },
+      { id: 'kb', name: 'KEYCHAIN B（鎖匙扣B）', price: 14, dot: '#1E3A8A' },
+      { id: 'sm', name: 'STICKER M（行李貼紙M）', price: 4, bundle: [3, 10] },
+      { id: 'sl', name: 'STICKER L（行李貼紙L）', price: 6, bundle: [3, 15] },
+      { id: 'b58', name: '58mm BADGE（胸章）', price: 5 },
+      { id: 'b75', name: '75mm BADGE（胸章）', price: 6 },
+      { id: 'sh', name: 'SHIKISHI（色紙）', price: 8 },
+      { id: 'ep', name: 'ENAMEL PIN（金屬徽章）', price: 36 },
+    ];
+
+    const DEFAULT_SETTINGS = {
+      currency: 'SGD',
+      gwpSingle: 50,
+      gwpFull: 150,
+      products: DEFAULT_PRODUCTS
+    };
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem('cashier_settings');
+        if (raw) return JSON.parse(raw);
+      } catch(e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+    }
+
+    function saveSettingsObj(s) {
+      localStorage.setItem('cashier_settings', JSON.stringify(s));
+    }
+
+    let settings = loadSettings();
+    let PRODUCTS = settings.products;
+    let CURRENCY = settings.currency;
+    let GWP_SINGLE = settings.gwpSingle;
+    let GWP_FULL = settings.gwpFull;
+
+    let cart = {};
+    let transactions = [];
+    let discountRaw = '';
+    let headerCollapsed = false;
+
+    function getToday() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    function getStorageKey() {
+      return 'cashier_' + CURRENCY + '_' + getToday();
+    }
+
+    function loadTransactions() {
+      try {
+        return JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
+      } catch { return []; }
+    }
+
+    function saveTransactions(txs) {
+      localStorage.setItem(getStorageKey(), JSON.stringify(txs));
+    }
+
+    transactions = loadTransactions();
+
+    function calcItem(price, qty, bundle) {
+      if (!bundle || qty < bundle[0]) return price * qty;
+      const sets = Math.floor(qty / bundle[0]);
+      const rem = qty % bundle[0];
+      return sets * bundle[1] + rem * price;
+    }
+
+    function getGiftInfo(subtotal) {
+      const fullSets = Math.floor(subtotal / GWP_FULL);
+      const remainder = subtotal % GWP_FULL;
+      const singles = Math.floor(remainder / GWP_SINGLE);
+      const count = fullSets * 3 + singles;
+      if (count >= 3) {
+        return { count, text: 'GIVE ' + count + ' BADGES', tier: 'full' };
+      }
+      if (count >= 1) {
+        return { count, text: 'GIVE ' + count + ' BADGE' + (count > 1 ? 'S' : ''), tier: 'single' };
+      }
+      return { count: 0, text: 'No GWP', tier: 'none' };
+    }
+
+    function calcTotalGifts() {
+      return transactions.reduce((sum, tx) => {
+        if (tx.gift && tx.gift.count) return sum + tx.gift.count;
+        return sum;
+      }, 0);
+    }
+
+    function renderGift(elId, subtotal) {
+      const info = getGiftInfo(subtotal);
+      const el = document.getElementById(elId);
+      if (!el) return;
+      if (info.count >= 3) {
+        el.innerHTML = '<span class="gift-full">' + info.text + '</span>';
+      } else if (info.count >= 1) {
+        el.innerHTML = '<span class="gift-active">' + info.text + '</span>';
+      } else {
+        el.textContent = 'Spend ' + CURRENCY + ' ' + GWP_SINGLE + '+ for GWP';
+      }
+    }
+
+    function renderGiftTotals() {
+      const totalGifts = calcTotalGifts();
+      const el = document.getElementById('headerGift');
+      if (!el) return;
+      if (totalGifts >= 3) {
+        el.innerHTML = '<span class="gift-full">' + totalGifts + ' BADGES given today</span>';
+      } else if (totalGifts >= 1) {
+        el.innerHTML = '<span class="gift-active">' + totalGifts + ' BADGE given today</span>';
+      } else {
+        el.textContent = 'No GWP yet';
+      }
+    }
+
+    function renderProducts() {
+      const el = document.getElementById('products');
+      el.innerHTML = PRODUCTS.map(p => {
+        const qty = cart[p.id] || 0;
+        const inCart = qty > 0 ? 'in-cart' : '';
+        const bundleText = p.bundle ? `${p.bundle[0]} for ${CURRENCY} ${p.bundle[1]}` : '';
+        return `
+          <div class="product-card ${inCart}" onclick="addToCart('${p.id}')">
+            <div class="product-qty-badge">${qty}</div>
+            <div class="product-name">${p.dot ? `<span class="product-dot" style="background:${p.dot}"></span>` : ''}${p.name}</div>
+            <div>
+              <div class="product-price">${CURRENCY} ${p.price}</div>
+              ${bundleText ? `<div class="product-bundle">${bundleText}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderCart() {
+      const itemsEl = document.getElementById('cartItems');
+      const totalEl = document.getElementById('cartTotal');
+      const panelSub = document.getElementById('panelSub');
+      const checkoutBtn = document.getElementById('checkoutBtn');
+      const keys = Object.keys(cart).filter(k => cart[k] > 0);
+
+      if (keys.length === 0) {
+        itemsEl.innerHTML = '<div class="empty-state">Tap a product to add</div>';
+        totalEl.textContent = CURRENCY + ' 0';
+        panelSub.textContent = 'Tap products to add';
+        checkoutBtn.disabled = true;
+        document.getElementById('discountDisplay').textContent = '-';
+        renderGift('cartGift', 0);
+        return;
+      }
+
+      let subtotal = 0;
+      itemsEl.innerHTML = keys.map(pid => {
+        const p = PRODUCTS.find(x => x.id === pid);
+        const qty = cart[pid];
+        const sub = calcItem(p.price, qty, p.bundle);
+        subtotal += sub;
+        const calcDetail = p.bundle && qty >= p.bundle[0]
+          ? `${Math.floor(qty/p.bundle[0])}x${p.bundle[0]}+${qty%p.bundle[0]}x${p.price}`
+          : `${qty}x${p.price}`;
+        return `
+          <div class="cart-item">
+            <div>
+              <div class="cart-item-name">${p.name}</div>
+              <div class="cart-item-calc">${calcDetail}</div>
+            </div>
+            <div class="cart-item-right">
+              <div class="cart-item-sub">${CURRENCY} ${sub}</div>
+              <div class="qty-control">
+                <button class="qty-btn minus" onclick="event.stopPropagation();changeQty('${pid}',-1)">-</button>
+                <div class="qty-value">${qty}</div>
+                <button class="qty-btn" onclick="event.stopPropagation();changeQty('${pid}',1)">+</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const disc = calcDiscount(subtotal);
+      const finalTotal = Math.max(subtotal - disc.amount, 0);
+      totalEl.textContent = CURRENCY + ' ' + finalTotal;
+      document.getElementById('discountDisplay').textContent = disc.label;
+      panelSub.textContent = `${keys.length} item(s) in cart`;
+      checkoutBtn.disabled = false;
+      renderGift('cartGift', subtotal);
+    }
+
+    function calcDiscount(subtotal) {
+      if (!discountRaw) return { amount: 0, label: '-' };
+      const val = discountRaw.trim();
+      if (val.endsWith('%')) {
+        const pct = parseFloat(val.slice(0, -1));
+        if (!isNaN(pct) && pct > 0) {
+          const amount = Math.round(subtotal * pct / 100);
+          return { amount, label: '-' + CURRENCY + ' ' + amount + ' (' + pct + '%)' };
+        }
+      } else {
+        const num = parseFloat(val);
+        if (!isNaN(num) && num > 0) {
+          return { amount: Math.min(num, subtotal), label: '-' + CURRENCY + ' ' + num };
+        }
+      }
+      return { amount: 0, label: '-' };
+    }
+
+    function renderTotals() {
+      const total = transactions.reduce((s, t) => s + t.total, 0);
+      document.getElementById('totalAmount').textContent = CURRENCY + ' ' + total;
+      document.getElementById('totalCount').textContent = transactions.length + ' transaction' + (transactions.length !== 1 ? 's' : '');
+      renderGiftTotals();
+    }
+
+    function addToCart(pid) {
+      cart[pid] = (cart[pid] || 0) + 1;
+      renderProducts();
+      renderCart();
+      const body = document.getElementById('panelBody');
+      const toggle = document.getElementById('panelToggle');
+      body.classList.remove('hidden');
+      toggle.classList.remove('collapsed');
+    }
+
+    function changeQty(pid, delta) {
+      cart[pid] = (cart[pid] || 0) + delta;
+      if (cart[pid] <= 0) delete cart[pid];
+      renderProducts();
+      renderCart();
+    }
+
+    function updateDiscount() {
+      discountRaw = document.getElementById('discountInput').value;
+      renderCart();
+    }
+
+    function clearCart() {
+      cart = {};
+      discountRaw = '';
+      document.getElementById('discountInput').value = '';
+      renderProducts();
+      renderCart();
+    }
+
+    function checkout() {
+      const keys = Object.keys(cart).filter(k => cart[k] > 0);
+      if (keys.length === 0) return;
+      let subtotal = 0;
+      const items = keys.map(pid => {
+        const p = PRODUCTS.find(x => x.id === pid);
+        const qty = cart[pid];
+        const sub = calcItem(p.price, qty, p.bundle);
+        subtotal += sub;
+        return { pid, name: p.name, qty, sub };
+      });
+      const disc = calcDiscount(subtotal);
+      const finalTotal = Math.max(subtotal - disc.amount, 0);
+      const gift = getGiftInfo(subtotal);
+      const tx = {
+        id: Date.now(),
+        time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        items, subtotal, discount: disc, total: finalTotal, gift
+      };
+      transactions.push(tx);
+      saveTransactions(transactions);
+      clearCart();
+      renderTotals();
+      showToast('Checked out: ' + CURRENCY + ' ' + finalTotal + ' - ' + gift.text);
+    }
+
+    function togglePanel() {
+      const body = document.getElementById('panelBody');
+      const toggle = document.getElementById('panelToggle');
+      body.classList.toggle('hidden');
+      toggle.classList.toggle('collapsed');
+    }
+
+    function toggleHeader() {
+      const content = document.getElementById('headerContent');
+      const btn = document.getElementById('headerToggleBtn');
+      headerCollapsed = !headerCollapsed;
+      if (headerCollapsed) {
+        content.style.display = 'none';
+        btn.textContent = 'Show';
+      } else {
+        content.style.display = 'block';
+        btn.textContent = 'Hide';
+      }
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    function showExport() {
+      const total = transactions.reduce((s, t) => s + t.total, 0);
+      let text = `72 Cashier Report - ${getToday()}\n`;
+      text += `========================\n\n`;
+      text += `Currency: ${CURRENCY}\n`;
+      text += `Total: ${CURRENCY} ${total}\n`;
+      text += `Transactions: ${transactions.length}\n\n`;
+
+      const summary = {};
+      let totalGifts = 0;
+      transactions.forEach(tx => {
+        tx.items.forEach(it => {
+          summary[it.name] = (summary[it.name] || 0) + it.qty;
+        });
+        if (tx.gift && tx.gift.count) totalGifts += tx.gift.count;
+      });
+      if (Object.keys(summary).length > 0) {
+        text += `--- Product Summary ---\n`;
+        Object.entries(summary).forEach(([name, qty]) => {
+          text += `${name}: ${qty}\n`;
+        });
+        text += `\n`;
+      }
+      if (totalGifts > 0) {
+        text += `--- Gift with Purchase ---\n`;
+        text += `Total GWP items given: ${totalGifts}\n\n`;
+      }
+
+      text += `--- Transactions ---\n`;
+      transactions.forEach(tx => {
+        text += `[${tx.time}] `;
+        text += tx.items.map(i => `${i.name}x${i.qty}`).join(', ');
+        text += ` = ${CURRENCY} ${tx.subtotal}`;
+        if (tx.discount.amount > 0) text += ` - ${CURRENCY} ${tx.discount.amount} discount`;
+        text += ` -> ${CURRENCY} ${tx.total}`;
+        if (tx.gift.tier !== 'none') {
+          text += ` [GWP: ${tx.gift.text}]`;
+        }
+        text += `\n`;
+      });
+
+      document.getElementById('exportArea').textContent = text;
+      document.getElementById('exportModal').classList.add('show');
+    }
+
+    function copyExport() {
+      const text = document.getElementById('exportArea').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard');
+      }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Copied to clipboard');
+      });
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    function confirmClear() {
+      document.getElementById('clearModal').classList.add('show');
+    }
+
+    function doClear() {
+      transactions = [];
+      localStorage.removeItem(getStorageKey());
+      renderTotals();
+      closeModal('clearModal');
+      showToast('All data cleared');
+    }
+
+    // ===== Settings =====
+    function showSettings() {
+      document.getElementById('settingCurrency').value = CURRENCY;
+      document.getElementById('settingGwpSingle').value = GWP_SINGLE;
+      document.getElementById('settingGwpFull').value = GWP_FULL;
+      renderSettingsProducts();
+      document.getElementById('settingsModal').classList.add('show');
+    }
+
+    function renderSettingsProducts() {
+      const container = document.getElementById('settingsProducts');
+      container.innerHTML = PRODUCTS.map((p, idx) => {
+        const bundleStr = p.bundle ? `${p.bundle[0]},${p.bundle[1]}` : '';
+        return `
+          <div class="product-edit-row">
+            <input type="text" name="name" value="${p.name}" placeholder="Name" onchange="updateProduct(${idx},'name',this.value)">
+            <input type="number" name="price" value="${p.price}" placeholder="Price" onchange="updateProduct(${idx},'price',parseFloat(this.value)||0)">
+            <input type="text" name="bundle" value="${bundleStr}" placeholder="Bundle" onchange="updateProduct(${idx},'bundle',this.value)">
+            <input type="text" name="dot" value="${p.dot || ''}" placeholder="Dot" onchange="updateProduct(${idx},'dot',this.value)">
+            <button class="del-btn" onclick="deleteProduct(${idx})">X</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateProduct(idx, field, value) {
+      if (field === 'bundle') {
+        if (value.trim()) {
+          const parts = value.split(',').map(x => parseInt(x.trim()));
+          if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            PRODUCTS[idx].bundle = parts;
+          } else {
+            delete PRODUCTS[idx].bundle;
+          }
+        } else {
+          delete PRODUCTS[idx].bundle;
+        }
+      } else if (field === 'dot') {
+        if (value.trim()) PRODUCTS[idx].dot = value.trim();
+        else delete PRODUCTS[idx].dot;
+      } else {
+        PRODUCTS[idx][field] = value;
+      }
+      renderSettingsProducts();
+    }
+
+    function deleteProduct(idx) {
+      PRODUCTS.splice(idx, 1);
+      renderSettingsProducts();
+    }
+
+    function addProductRow() {
+      PRODUCTS.push({ id: 'p' + Date.now(), name: 'New Product', price: 0 });
+      renderSettingsProducts();
+    }
+
+    function saveSettings() {
+      const newCurrency = document.getElementById('settingCurrency').value.trim() || 'SGD';
+      const newGwpSingle = parseInt(document.getElementById('settingGwpSingle').value) || 50;
+      const newGwpFull = parseInt(document.getElementById('settingGwpFull').value) || 150;
+
+      CURRENCY = newCurrency;
+      GWP_SINGLE = newGwpSingle;
+      GWP_FULL = newGwpFull;
+
+      settings = { currency: CURRENCY, gwpSingle: GWP_SINGLE, gwpFull: GWP_FULL, products: PRODUCTS };
+      saveSettingsObj(settings);
+
+      // reload transactions with new currency key
+      transactions = loadTransactions();
+      cart = {};
+      discountRaw = '';
+      document.getElementById('discountInput').value = '';
+
+      renderProducts();
+      renderCart();
+      renderTotals();
+      closeModal('settingsModal');
+      showToast('Settings saved');
+    }
+
+    function exportSettings() {
+      const s = { currency: CURRENCY, gwpSingle: GWP_SINGLE, gwpFull: GWP_FULL, products: PRODUCTS };
+      const json = JSON.stringify(s, null, 2);
+      navigator.clipboard.writeText(json).then(() => {
+        showToast('Settings copied');
+      }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = json;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Settings copied');
+      });
+    }
+
+    function importSettings() {
+      document.getElementById('importArea').value = '';
+      document.getElementById('importModal').classList.add('show');
+    }
+
+    function doImportSettings() {
+      try {
+        const raw = document.getElementById('importArea').value.trim();
+        const imported = JSON.parse(raw);
+        if (imported.products && Array.isArray(imported.products)) {
+          PRODUCTS = imported.products;
+          CURRENCY = imported.currency || 'SGD';
+          GWP_SINGLE = imported.gwpSingle || 50;
+          GWP_FULL = imported.gwpFull || 150;
+          settings = { currency: CURRENCY, gwpSingle: GWP_SINGLE, gwpFull: GWP_FULL, products: PRODUCTS };
+          saveSettingsObj(settings);
+          transactions = loadTransactions();
+          cart = {};
+          discountRaw = '';
+          document.getElementById('discountInput').value = '';
+          renderProducts();
+          renderCart();
+          renderTotals();
+          closeModal('importModal');
+          closeModal('settingsModal');
+          showToast('Settings imported');
+        } else {
+          showToast('Invalid settings format');
+        }
+      } catch(e) {
+        showToast('Invalid JSON');
+      }
+    }
+
+    function resetSettings() {
+      if (!confirm('Reset all settings to default? This will clear products and custom prices.')) return;
+      settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+      saveSettingsObj(settings);
+      PRODUCTS = settings.products;
+      CURRENCY = settings.currency;
+      GWP_SINGLE = settings.gwpSingle;
+      GWP_FULL = settings.gwpFull;
+      transactions = loadTransactions();
+      cart = {};
+      discountRaw = '';
+      document.getElementById('discountInput').value = '';
+      renderProducts();
+      renderCart();
+      renderTotals();
+      renderSettingsProducts();
+      document.getElementById('settingCurrency').value = CURRENCY;
+      document.getElementById('settingGwpSingle').value = GWP_SINGLE;
+      document.getElementById('settingGwpFull').value = GWP_FULL;
+      showToast('Reset to default');
+    }
+
+    // Init
+    renderProducts();
+    renderCart();
+    renderTotals();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
