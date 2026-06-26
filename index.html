@@ -118,7 +118,7 @@
       display: flex; align-items: center; gap: 8px; padding: 12px 0;
       border-bottom: 1px solid #f8bbd0;
     }
-    .discount-label { font-size: 14px; font-weight: 700; color: #666666; }
+    .discount-label { font-size: 14px; font-weight: 700; color: #666666; white-space: nowrap; }
     .discount-input {
       flex: 1; background: #ffffff; border: 2px solid #f8bbd0; border-radius: 8px;
       padding: 8px 12px; color: #1a1a2e; font-size: 15px; font-weight: 700;
@@ -300,8 +300,8 @@
         <div class="panel-body" id="panelBody">
           <div id="cartItems"></div>
           <div class="discount-row">
-            <div class="discount-label">Discount</div>
-            <input type="text" class="discount-input" id="discountInput" placeholder="10 or 10%" oninput="updateDiscount()">
+            <div class="discount-label">Adj</div>
+            <input type="text" class="discount-input" id="discountInput" placeholder="+10 or -10" oninput="updateDiscount()">
             <div class="discount-display" id="discountDisplay">-</div>
           </div>
           <div class="cart-total-row">
@@ -620,7 +620,7 @@
       }).join('');
 
       const disc = calcDiscount(subtotal);
-      const finalTotal = Math.max(subtotal - disc.amount, 0);
+      const finalTotal = subtotal + disc.amount;
       totalEl.textContent = CURRENCY + ' ' + finalTotal;
       document.getElementById('discountDisplay').textContent = disc.label;
       panelSub.textContent = `${keys.length} item(s) in cart`;
@@ -643,18 +643,13 @@
 
     function calcDiscount(subtotal) {
       if (!discountRaw) return { amount: 0, label: '-' };
-      const val = discountRaw.trim();
-      if (val.endsWith('%')) {
-        const pct = parseFloat(val.slice(0, -1));
-        if (!isNaN(pct) && pct > 0) {
-          const amount = Math.round(subtotal * pct / 100);
-          return { amount, label: '-' + CURRENCY + ' ' + amount + ' (' + pct + '%)' };
-        }
-      } else {
-        const num = parseFloat(val);
-        if (!isNaN(num) && num > 0) {
-          return { amount: Math.min(num, subtotal), label: '-' + CURRENCY + ' ' + num };
-        }
+      const num = parseFloat(discountRaw.trim());
+      if (isNaN(num)) return { amount: 0, label: '-' };
+      if (num > 0) {
+        return { amount: -num, label: '+' + CURRENCY + ' ' + num };
+      }
+      if (num < 0) {
+        return { amount: -num, label: CURRENCY + ' ' + num };
       }
       return { amount: 0, label: '-' };
     }
@@ -711,7 +706,7 @@
         return { pid, name: p.name, qty, sub };
       });
       const disc = calcDiscount(subtotal);
-      const finalTotal = Math.max(subtotal - disc.amount, 0);
+      const finalTotal = subtotal + disc.amount;
       const gift = getGiftInfo(subtotal);
       const paymentMethod = currentPaymentMethod || PAYMENT_METHODS[0] || 'Cash';
       const tx = {
@@ -796,7 +791,7 @@
         text += `[${tx.time}] [${tx.paymentMethod || 'Cash'}] `;
         text += tx.items.map(i => `${i.name}x${i.qty}`).join(', ');
         text += ` = ${CURRENCY} ${tx.subtotal}`;
-        if (tx.discount.amount > 0) text += ` - ${CURRENCY} ${tx.discount.amount} discount`;
+        if (tx.discount.amount !== 0) text += ` [Adj: ${tx.discount.label}]`;
         text += ` -> ${CURRENCY} ${tx.total}`;
         if (tx.gift.tier !== 'none') {
           text += ` [GWP: ${tx.gift.text}]`;
