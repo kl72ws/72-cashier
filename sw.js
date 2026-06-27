@@ -1,4 +1,4 @@
-const CACHE = 'cashier-v1';
+const CACHE = 'cashier-v2';
 const FILES = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
